@@ -104,7 +104,7 @@ def find_stop(stop_regex: Pattern, sequence: str, start: int) -> Union[int, None
     for pos in range(start + 3, len(sequence) - 2, 3):
         if stop_regex.fullmatch(sequence[pos:pos+3]):
             return pos
-    
+
     return None
 
 
@@ -117,7 +117,27 @@ def has_shine_dalgarno(shine_regex: Pattern, sequence: str, start: int, max_shin
     :param max_shine_dalgarno_distance: (int) Maximum distance of the shine dalgarno to the start position
     :return: (boolean) true -> has a shine dalgarno upstream to the gene, false -> no
     """
-    pass
+    search_start = start - max_shine_dalgarno_distance
+    search_stop = start - 3
+
+    # The search region must not extend beyond the beginning
+    # of the genome.
+    if search_start < 0:
+        return False
+
+    # Search upstream, leaving at least 6 nucleotides
+    # between the motif region and the start codon.
+    search_stop = start - 5
+
+    if search_stop <= search_start:
+        return False
+
+    return shine_regex.search(
+        sequence,
+        search_start,
+        search_stop
+    ) is not None
+
 
 
 def predict_genes(sequence: str, start_regex: Pattern, stop_regex: Pattern, shine_regex: Pattern, 

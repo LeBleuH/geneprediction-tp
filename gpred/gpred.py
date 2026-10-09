@@ -3,6 +3,7 @@ import sys
 import os
 import csv
 import re
+from textwrap import fill
 import textwrap
 from re import Pattern
 from pathlib import Path
@@ -269,22 +270,57 @@ def main() -> None: # pragma: no cover
     # an uracile that we would find on the expressed RNA
     #start_codons = ['TTG', 'CTG', 'ATT', 'ATG', 'GTG']
     #stop_codons = ['TAA', 'TAG', 'TGA']
-    start_regex = re.compile('AT[TG]|[ATCG]TG')
-    stop_regex = re.compile('TA[GA]|TGA')
+    start_regex = re.compile(r"AT[TG]|[ATCG]TG")
+    stop_regex = re.compile(r"TA[GA]|TGA")
     # Shine AGGAGGUAA
     #AGGA ou GGAGG 
-    shine_regex = re.compile('A?G?GAGG|GGAG|GG.{1}GG')
+    shine_regex = re.compile(r"A?G?GAGG|GGAG|GG.{1}GG")
     # Arguments
     args = get_arguments()
     # Let us do magic in 5' to 3'
-    
+
+    # Read the original genome sequence
+    sequence = read_fasta(Path(args.genome_file))
+    genome_length = len(sequence)
+
+    probable_genes = predict_genes(
+        sequence,
+        start_regex,
+        stop_regex,
+        shine_regex,
+        args.min_gene_len,
+        args.max_shine_dalgarno_distance,
+        args.min_gap
+    )
     # Don't forget to uncomment !!!
     # Call these function in the order that you want
     # We reverse and complement
-    #sequence_rc = reverse_complement(sequence)
+    sequence_rc = reverse_complement(sequence)
+
+    probable_genes_comp = predict_genes(
+    sequence_rc,
+    start_regex,
+    stop_regex,
+    shine_regex,
+    args.min_gene_len,
+    args.max_shine_dalgarno_distance,
+    args.min_gap
+    )
+
+
+    # Convert reverse-strand coordinates to original-genome coordinates
+    probable_genes_comp_corrected = [
+        [genome_length - end + 1, genome_length - start + 1]
+        for start, end in probable_genes_comp
+    ]
+
+    # Combine and sort all predicted genes
+    all_genes = probable_genes + probable_genes_comp_corrected
+    all_genes.sort(key=lambda gene: gene[0])
+
     # Call to output functions
-    #write_genes_pos(args.predicted_genes_file, probable_genes)
-    #write_genes(args.fasta_file, sequence, probable_genes, sequence_rc, probable_genes_comp)
+    write_genes_pos(args.predicted_genes_file, all_genes)
+    write_genes(args.fasta_file, sequence, probable_genes, sequence_rc, probable_genes_comp)
 
 
 
